@@ -1,5 +1,10 @@
 // Scheduling Assistant Core Application Logic
-
+/*
+Scheduling Assistant
+Copyright © 2026 Diwakar.
+All rights reserved.
+Unauthorized copying or redistribution is prohibited.
+*/
 // State management
 let state = {
   reminders: [],
