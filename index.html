@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheduling Assistant - Hands-Free Scheduling</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="A client-side voice scheduling assistant using Web Speech API, robust NLP parsing, browser notifications with sound chimes, conflict audits, and analytics.">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              850: '#1e293b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="index.css">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="min-h-screen text-slate-100 antialiased relative pb-16">
+  
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow top-12 left-12"></div>
+  <div class="ambient-glow bottom-24 right-12" style="background: radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0) 70%);"></div>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+    
+    <!-- Top Header -->
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between pb-6 mb-8 border-b border-slate-800/80 gap-4">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-2">
+          <i data-lucide="mic" class="text-indigo-400 w-8 h-8"></i>
+          Scheduling Assistant
+        </h1>
+        <p class="text-slate-400 text-sm mt-1">Sleek hands-free reminder scheduler and calendar planner</p>
+      </div>
+      
+      <!-- Date/Time and Alert Badge Panel -->
+      <div class="flex items-center gap-3.5 self-start md:self-auto">
+        <div class="text-right hidden sm:block">
+          <div id="live-clock" class="text-lg font-bold text-slate-100 tabular-nums">--:--:-- --</div>
+          <div id="live-date" class="text-xs text-slate-400">---, --- --, ----</div>
+        </div>
+        <div class="h-8 w-px bg-slate-800 hidden sm:block"></div>
+        <div class="flex items-center gap-2">
+          <div id="permission-status"></div>
+          <button id="btn-request-permission" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-lg shadow-indigo-500/20 active:scale-95">
+            Enable Alerts
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Grid Dashboard Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left Column: Speech Controls & suggestions (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- Voice input glass panel -->
+        <section class="glass rounded-3xl p-6 relative overflow-hidden shadow-2xl">
+          <h2 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+            <i data-lucide="volume-2" class="text-indigo-400 w-5 h-5"></i>
+            Voice Control
+          </h2>
+          
+          <div class="flex flex-col items-center py-8">
+            
+            <!-- Mic button container -->
+            <div id="mic-container" class="relative z-10 mb-6">
+              <button id="btn-mic" class="w-24 h-24 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition-all duration-300 shadow-xl shadow-indigo-600/30 active:scale-95" title="Tap to start recording voice command">
+                <i data-lucide="mic" class="w-10 h-10"></i>
+              </button>
+            </div>
+            
+            <p id="mic-status-text" class="text-sm font-medium text-slate-400 transition-colors duration-200 text-center">
+              Tap microphone to speak schedule command
+            </p>
+            
+            <!-- Audio wave animated visualizer -->
+            <div id="wave-visualizer" class="hidden flex items-center justify-center h-10 mt-4">
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+            </div>
+          </div>
+          
+          <!-- Transcript Preview Container -->
+          <div id="transcript-preview-box" class="hidden border border-slate-800 rounded-2xl bg-slate-950/40 p-4 mt-2">
+            <div class="flex items-center justify-between border-b border-slate-900 pb-2 mb-2 text-xs font-semibold text-indigo-400">
+              <span>Speech Live Transcript</span>
+              <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+            </div>
+            <p id="transcript-text" class="text-sm text-slate-300 italic min-h-[40px] leading-relaxed">
+              Waiting for voice...
+            </p>
+          </div>
+        </section>
+
+        <!-- Command Suggestions Panel -->
+        <section class="glass rounded-3xl p-6 shadow-xl">
+          <h3 class="text-sm font-bold text-indigo-400 tracking-wider uppercase mb-3.5 flex items-center gap-1.5">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            Command Guides
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">Click any example command below to simulate speech input instantly:</p>
+          
+          <div class="space-y-3">
+            <button onclick="handleSpeechResult('remind me to call John today at 5 PM')" 
+                    class="w-full text-left p-3 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-850 hover:border-slate-700 transition-all text-xs flex justify-between items-center group">
+              <span class="text-slate-300 group-hover:text-slate-100">"Remind me to <strong class="text-indigo-300">call John today at 5 PM</strong>"</span>
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all"></i>
+            </button>
+            <button onclick="handleSpeechResult('book a meeting tomorrow evening at 7')" 
+                    class="w-full text-left p-3 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-850 hover:border-slate-700 transition-all text-xs flex justify-between items-center group">
+              <span class="text-slate-300 group-hover:text-slate-100">"Book a <strong class="text-indigo-300">meeting tomorrow evening at 7</strong>"</span>
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all"></i>
+            </button>
+            <button onclick="handleSpeechResult('set a reminder for a team meeting next Friday morning')" 
+                    class="w-full text-left p-3 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-850 hover:border-slate-700 transition-all text-xs flex justify-between items-center group">
+              <span class="text-slate-300 group-hover:text-slate-100">"Set a <strong class="text-indigo-300">reminder for a team meeting next Friday morning</strong>"</span>
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all"></i>
+            </button>
+            <button onclick="handleSpeechResult('remind me in 15 minutes to take a screen break')" 
+                    class="w-full text-left p-3 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-850 hover:border-slate-700 transition-all text-xs flex justify-between items-center group">
+              <span class="text-slate-300 group-hover:text-slate-100">"Remind me <strong class="text-indigo-300">in 15 minutes to take a screen break</strong>"</span>
+              <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all"></i>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column: Agenda list + analytics chart (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- Analytics Chart -->
+        <section class="glass rounded-3xl p-6 shadow-xl relative overflow-hidden">
+          <h2 class="text-lg font-bold text-slate-200 mb-4 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+              <i data-lucide="bar-chart-2" class="text-indigo-400 w-5 h-5"></i>
+              Activity Logs (Last 30 Days)
+            </span>
+          </h2>
+          <div class="h-44 relative w-full">
+            <canvas id="analyticsChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Upcoming Reminders -->
+        <section class="glass rounded-3xl p-6 shadow-2xl">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-4">
+            <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+              <i data-lucide="calendar" class="text-indigo-400 w-5 h-5"></i>
+              Upcoming Reminders
+            </h2>
+            <button id="btn-add-manual" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition-colors">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              Schedule Manually
+            </button>
+          </div>
+          
+          <div id="upcoming-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- Past Reminders (History logs) -->
+        <details class="glass rounded-3xl p-6 shadow-md group">
+          <summary class="list-none flex items-center justify-between cursor-pointer focus:outline-none select-none">
+            <h2 class="text-md font-semibold text-slate-300 flex items-center gap-2">
+              <i data-lucide="history" class="text-slate-400 w-4 h-4"></i>
+              Past Reminders History
+            </h2>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform duration-200"></i>
+          </summary>
+          
+          <div id="past-list" class="space-y-3 max-h-[220px] overflow-y-auto pr-1 mt-4">
+            <!-- Dynamically populated -->
+          </div>
+        </details>
+      </div>
+      
+    </div>
+  </main>
+
+  <!-- Edit/Confirm Modal Overlay -->
+  <div id="edit-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl transform scale-100 transition-all">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-4">
+        <h3 id="modal-title" class="text-lg font-bold text-slate-100">Review & Schedule</h3>
+        <button id="btn-close-modal" class="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      
+      <form id="edit-form" class="space-y-4">
+        <!-- Event description -->
+        <div>
+          <label for="edit-description" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Reminder Description</label>
+          <input type="text" id="edit-description" required 
+                 class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-100 text-sm outline-none transition-colors"
+                 placeholder="e.g. Call John">
+        </div>
+        
+        <!-- Date and Time picker -->
+        <div>
+          <label for="edit-datetime" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Date & Time</label>
+          <input type="datetime-local" id="edit-datetime" required 
+                 class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-slate-100 text-sm outline-none transition-colors">
+        </div>
+        
+        <!-- Conflict/Expire warning container -->
+        <div id="modal-warning-box" class="hidden">
+          <p id="modal-warning-text"></p>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex gap-3 pt-2">
+          <button type="button" id="btn-cancel-modal" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-800 text-slate-300 font-semibold text-sm hover:bg-slate-800 transition-colors active:scale-95">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-500/10 active:scale-95">
+            Schedule Event
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Alarm Ringing Overlay (Full screen centered overlay) -->
+  <div id="alarm-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-lg hidden">
+    <div class="w-full max-w-sm bg-gradient-to-b from-indigo-950/60 to-slate-950 border border-indigo-500/30 rounded-3xl p-8 shadow-3xl text-center relative overflow-hidden">
+      <!-- Ambient pulsing visual ring behind alarm -->
+      <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl animate-pulse"></div>
+      
+      <!-- Pulsing bell animation icon -->
+      <div class="mx-auto w-20 h-20 bg-indigo-500/10 border border-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 mb-6 animate-bounce">
+        <i data-lucide="bell-ring" class="w-10 h-10 animate-pulse"></i>
+      </div>
+      
+      <p class="text-xs font-bold text-indigo-400 tracking-wider uppercase mb-1">Reminder Alert</p>
+      <h3 id="alarm-desc" class="text-2xl font-bold text-slate-100 mb-2 leading-snug">Call John</h3>
+      <p id="alarm-time" class="text-sm text-slate-400 mb-8 tabular-nums">05:00 PM - July 14</p>
+      
+      <div class="flex flex-col gap-3">
+        <button id="btn-dismiss-alarm" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-indigo-500/20">
+          Dismiss Alarm
+        </button>
+        <button id="btn-snooze-alarm" class="w-full py-3 bg-slate-900 border border-slate-800 text-indigo-300 font-semibold text-sm rounded-xl hover:bg-slate-800 transition-colors active:scale-95">
+          Snooze 5 Minutes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Info -->
+  <footer class="absolute bottom-4 left-0 right-0 text-center text-[10px] text-slate-600 pointer-events-none">
+    Scheduling Assistant • Runs 100% Client-Side
+  </footer>
+
+  <!-- Application logic -->
+  <script src="app.js"></script>
+</body>
+</html>
