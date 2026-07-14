@@ -67,3 +67,8 @@ GitHub: https://github.com/Diwakar24281
 ## License
 
 This project is intended for educational and portfolio purposes.
+
+Copyright © 2026 Diwakar. All rights reserved.
+
+This repository is provided for portfolio and evaluation purposes only.
+You may view the source code, but you may not copy, modify, redistribute, or use it in your own projects without prior written permission.
